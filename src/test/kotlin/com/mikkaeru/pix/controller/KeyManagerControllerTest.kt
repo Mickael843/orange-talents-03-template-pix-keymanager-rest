@@ -67,6 +67,23 @@ internal class KeyManagerControllerTest {
         }
     }
 
+    @Test
+    fun `nao deve registrar um chave pix quando os o tipo de chave for invalido`() {
+        val key = KeyRequest(
+            type = null,
+            key = "14938637675",
+            accountType = AccountType.CACC
+        )
+
+        val request = POST("/v1/users/$CLIENT_ID/keys", key)
+        val response = client.toBlocking().exchange(request, KeyRequest::class.java)
+
+        with(response) {
+            assertTrue(body.isPresent)
+            assertThat(status, equalTo(CREATED))
+        }
+    }
+
     @Factory
     @Replaces(factory = GrpcClientFactory::class)
     internal class StubFactory {
