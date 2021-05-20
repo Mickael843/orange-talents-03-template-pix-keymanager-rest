@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.mikkaeru";
+option java_outer_classname = "KeymanagerGrpc";
+
+package com.mikkaeru;
+
+import "google/protobuf/timestamp.proto";
+
+service KeymanagerService {
+  rpc registerPixKey (KeyPixRequest) returns (KeyPixResponse) {}
+  rpc removePixKey (RemoveKeyPixRequest) returns (RemoveKeyPixResponse) {}
+}
+
+service SearchManagerService {
+  rpc searchPixKey (SearchRequest) returns (SearchResponse) {}
+  rpc searchAllByOwner (SearchAllRequest) returns (SearchAllResponse) {}
+}
+
+enum KeyType {
+  UNKNOWN_KEY_TYPE = 0;
+  RANDOM = 1;
+  CPF = 2;
+  PHONE = 3;
+  EMAIL = 4;
+}
+
+enum AccountType {
+  UNKNOWN_ACCOUNT_TYPE = 0;
+  SVGS = 1;
+  CACC = 2;
+}
+
+message KeyPixRequest {
+  string clientId = 1;
+  string key = 2;
+  KeyType type = 3;
+  AccountType accountType = 4;
+}
+
+message KeyPixResponse {
+  string clientId = 1;
+  string pixId = 2;
+}
+
+message RemoveKeyPixRequest {
+  string clientId = 1;
+  string pixId = 2;
+}
+
+message RemoveKeyPixResponse {
+  string clientId = 1;
+  string pixId = 2;
+}
+
+message SearchRequest {
+  message FilterById {
+    string clientId = 1;
+    string pixId = 2;
+  }
+
+  oneof filter {
+    FilterById pixId = 1;
+    string key = 2;
+  }
+}
+
+message SearchResponse {
+  string clientId = 1;
+  string pixId = 2;
+  PixKey pixKey = 3;
+
+  message PixKey {
+    KeyType type = 1;
+    string key = 2;
+    Owner owner = 3;
+    Account account = 4;
+    google.protobuf.Timestamp createAt = 5;
+
+    message Owner {
+      string name = 1;
+      string cpf = 2;
+    }
+
+    message Account {
+      string institution = 1;
+      string agency = 2;
+      string number = 3;
+      AccountType type = 4;
+    }
+  }
+}
+
+message SearchAllRequest {
+  string clientId = 1;
+}
+
+message SearchAllResponse {
+  string clientId = 1;
+  repeated PixKeyDetails pixKeys = 2;
+
+  message PixKeyDetails {
+    string pixId = 2;
+    KeyType type = 3;
+    string key = 4;
+    AccountType accountType = 5;
+    google.protobuf.Timestamp createAt = 6;
+  }
+}
