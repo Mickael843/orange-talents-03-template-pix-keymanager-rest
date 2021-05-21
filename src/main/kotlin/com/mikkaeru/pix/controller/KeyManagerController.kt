@@ -2,13 +2,12 @@ package com.mikkaeru.pix.controller
 
 import com.mikkaeru.KeyPixResponse
 import com.mikkaeru.KeymanagerServiceGrpc
+import com.mikkaeru.RemoveKeyPixRequest
 import com.mikkaeru.pix.dto.KeyRequest
 import com.mikkaeru.pix.dto.KeyResponse
+import com.mikkaeru.pix.dto.RemovePixKeyResponse
 import io.micronaut.http.HttpResponse
-import io.micronaut.http.annotation.Body
-import io.micronaut.http.annotation.Controller
-import io.micronaut.http.annotation.PathVariable
-import io.micronaut.http.annotation.Post
+import io.micronaut.http.annotation.*
 import io.micronaut.validation.Validated
 import org.slf4j.LoggerFactory
 import java.util.*
@@ -29,6 +28,20 @@ class KeyManagerController(
         val response = keymanagerGrpc.registerPixKey(request.toGrpcModel(clientId.toString()))
 
         return HttpResponse.created(response.toKeyResponse(), HttpResponse.uri("/v1/users/$clientId/keys/${response.pixId}"))
+    }
+
+    @Delete("/{pixId}")
+    fun remove(@PathVariable clientId: UUID, @PathVariable pixId: UUID): HttpResponse<*> {
+        keymanagerGrpc.removePixKey(
+            RemoveKeyPixRequest.newBuilder()
+                .setClientId(clientId.toString())
+                .setPixId(pixId.toString())
+                .build()
+        ).also {
+            log.info("[${it.clientId}] removeu a chave pix com o id: ${it.pixId}")
+        }
+
+        return HttpResponse.ok(RemovePixKeyResponse(pixId = pixId, clientId = clientId))
     }
 
     private fun KeyPixResponse.toKeyResponse() = KeyResponse(pixId = pixId, clientId = clientId)

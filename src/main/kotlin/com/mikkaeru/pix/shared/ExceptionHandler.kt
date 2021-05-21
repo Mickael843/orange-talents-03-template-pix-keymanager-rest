@@ -2,7 +2,8 @@ package com.mikkaeru.pix.shared
 
 import com.mikkaeru.pix.dto.KeyRequest
 import com.mikkaeru.pix.model.KeyType
-import io.grpc.Status.ALREADY_EXISTS
+import io.grpc.Status.Code.ALREADY_EXISTS
+import io.grpc.Status.Code.NOT_FOUND
 import io.grpc.StatusRuntimeException
 import io.micronaut.core.convert.exceptions.ConversionErrorException
 import io.micronaut.http.HttpResponse
@@ -53,15 +54,17 @@ class ExceptionHandler {
 
     @Error(global = true)
     fun error(e: StatusRuntimeException): HttpResponse<JsonError> {
-        val jsonError = when(e.status.code) {
-            ALREADY_EXISTS.code -> JsonError(
+        return when(e.status.code) {
+            ALREADY_EXISTS -> HttpResponse.unprocessableEntity<JsonError>().body(JsonError(
                 message = "pix key already registered",
                 code = HttpStatus.UNPROCESSABLE_ENTITY.code,
                 fields = listOf(JsonError.Field(name = "key", description = e.status.description ?: ""))
-            )
-            else -> JsonError(message = "Unknown error", HttpStatus.INTERNAL_SERVER_ERROR.code)
+            ))
+            NOT_FOUND -> HttpResponse.notFound<JsonError?>().body(JsonError(
+                message = "Pix key not found",
+                code = HttpStatus.NOT_FOUND.code
+            ))
+            else -> HttpResponse.serverError<JsonError?>().body(JsonError(message = "Unknown error", HttpStatus.INTERNAL_SERVER_ERROR.code))
         }
-
-        return HttpResponse.unprocessableEntity<JsonError>().body(jsonError)
     }
 }
