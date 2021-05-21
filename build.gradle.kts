@@ -39,10 +39,12 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}")
     runtimeOnly("ch.qos.logback:logback-classic")
-    implementation("io.micronaut:micronaut-validation")
     runtimeOnly("com.fasterxml.jackson.module:jackson-module-kotlin")
     testImplementation("org.hamcrest:hamcrest")
     testImplementation("org.mockito:mockito-core")
+
+    implementation("io.micronaut:micronaut-validation")
+    implementation("org.hibernate.validator:hibernate-validator:6.1.2.Final")
 
     testImplementation("org.mockito:mockito-inline:3.9.0")
 }
