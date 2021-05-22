@@ -3,32 +3,30 @@ package com.mikkaeru.pix.controller
 import com.google.protobuf.Timestamp
 import com.mikkaeru.*
 import com.mikkaeru.pix.dto.AccountResponse
+import com.mikkaeru.pix.dto.AllPixKeyResponse
 import com.mikkaeru.pix.dto.OwnerResponse
 import com.mikkaeru.pix.dto.PixKeyDetailsResponse
-import com.mikkaeru.pix.shared.GrpcClientFactory
+import com.mikkaeru.pix.helper.IntegrationHelper
 import com.mikkaeru.pix.shared.JsonError
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
-import io.micronaut.context.annotation.Factory
-import io.micronaut.context.annotation.Replaces
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.client.HttpClient
 import io.micronaut.http.client.annotation.Client
 import io.micronaut.http.client.exceptions.HttpClientResponseException
-import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 import org.hamcrest.MatcherAssert.assertThat
+import org.hamcrest.collection.IsCollectionWithSize
 import org.hamcrest.core.IsEqual.equalTo
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.BDDMockito.given
-import org.mockito.Mockito
 import java.time.LocalDateTime
+import java.util.*
 import javax.inject.Inject
-import javax.inject.Singleton
 
-@MicronautTest
-internal class SearchManagerControllerTest {
+internal class SearchManagerControllerTest: IntegrationHelper() {
 
     @field:Inject
     lateinit var searchManager: SearchManagerServiceGrpc.SearchManagerServiceBlockingStub
@@ -63,23 +61,25 @@ internal class SearchManagerControllerTest {
 
     @Test
     fun `deve buscar uma chave pix pelo seu id e pelo clientId`() {
+        val pixIdTmp = UUID.randomUUID().toString()
+
         given(searchManager.searchPixKey(
             SearchRequest.newBuilder()
                 .setPixId(
                     SearchRequest.FilterById.newBuilder()
-                        .setPixId(pixKeyDetails.pixId)
+                        .setPixId(pixIdTmp)
                         .setClientId(pixKeyDetails.clientId)
                         .build()
                 ).build()
-        )).willReturn(searchResponse())
+        )).willReturn(getSearchResponse(pixIdTmp))
 
-        val request = HttpRequest.GET<PixKeyDetailsResponse>("/v1/users/${pixKeyDetails.clientId}/keys/${pixKeyDetails.pixId}")
+        val request = HttpRequest.GET<PixKeyDetailsResponse>("/v1/users/${pixKeyDetails.clientId}/keys/${pixIdTmp}")
         val response = client.toBlocking().exchange(request, PixKeyDetailsResponse::class.java)
 
         with(response.body()!!) {
+            assertThat(pixId, equalTo(pixIdTmp))
             assertThat(key, equalTo(pixKeyDetails.key))
             assertThat(type, equalTo(pixKeyDetails.type))
-            assertThat(pixId, equalTo(pixKeyDetails.pixId))
             assertThat(clientId, equalTo(pixKeyDetails.clientId))
 
             with(owner) {
@@ -126,9 +126,49 @@ internal class SearchManagerControllerTest {
         }
     }
 
-    private fun searchResponse(): SearchResponse {
+    @Test
+    fun `deve buscar uma lista de chave pix pelo clientId`() {
+        given(searchManager.searchAllByOwner(
+            SearchAllRequest.newBuilder().setClientId(pixKeyDetails.clientId).build()
+        )).willReturn(
+            SearchAllResponse.newBuilder()
+                .setClientId(pixKeyDetails.clientId)
+                .addAllPixKeys(pixKeyDetails())
+                .build()
+        )
+
+        val request = HttpRequest.GET<AllPixKeyResponse>("/v1/users/${pixKeyDetails.clientId}/keys")
+        val response = client.toBlocking().exchange(request, AllPixKeyResponse::class.java)
+
+        with(response.body()!!) {
+            assertThat(clientId, equalTo(pixKeyDetails.clientId))
+            assertThat(keys, IsCollectionWithSize.hasSize(pixKeyDetails().size))
+        }
+    }
+
+    @Test
+    fun `deve retornar uma lista vazia para um client sem chave pix cadastrada`() {
+        given(searchManager.searchAllByOwner(
+            SearchAllRequest.newBuilder().setClientId(pixKeyDetails.clientId).build()
+        )).willReturn(
+            SearchAllResponse.newBuilder()
+                .setClientId(pixKeyDetails.clientId)
+                .addAllPixKeys(listOf())
+                .build()
+        )
+
+        val request = HttpRequest.GET<AllPixKeyResponse>("/v1/users/${pixKeyDetails.clientId}/keys")
+        val response = client.toBlocking().exchange(request, AllPixKeyResponse::class.java)
+
+        with(response.body()!!) {
+            assertTrue(keys.isEmpty())
+            assertThat(clientId, equalTo(pixKeyDetails.clientId))
+        }
+    }
+
+    private fun getSearchResponse(pixId: String): SearchResponse {
         return SearchResponse.newBuilder()
-            .setPixId(pixKeyDetails.pixId)
+            .setPixId(pixId)
             .setClientId(pixKeyDetails.clientId)
             .setPixKey(
                 SearchResponse.PixKey.newBuilder()
@@ -154,13 +194,23 @@ internal class SearchManagerControllerTest {
             ).build()
     }
 
-    @Factory
-    @Replaces(factory = GrpcClientFactory::class)
-    internal class StubFactory {
+    private fun pixKeyDetails(): List<SearchAllResponse.PixKeyDetails> {
+        val pixId = UUID.randomUUID().toString()
+        val list = mutableListOf<SearchAllResponse.PixKeyDetails>()
 
-        @Singleton
-        fun stubMock(): SearchManagerServiceGrpc.SearchManagerServiceBlockingStub {
-            return Mockito.mock(SearchManagerServiceGrpc.SearchManagerServiceBlockingStub::class.java)
+        for (i in 1..10) {
+            val build = SearchAllResponse.PixKeyDetails.newBuilder()
+                .setPixId(pixId)
+                .setType(KeyType.valueOf(KeyType.EMAIL.name))
+                .setKey("teste$i@gmail.com")
+                .setAccountType(AccountType.valueOf("CACC"))
+                .setCreateAt(
+                    Timestamp.newBuilder().setNanos(today.nano).setSeconds(today.second.toLong()).build()
+                ).build()
+
+            list.add(build)
         }
+
+        return list
     }
 }

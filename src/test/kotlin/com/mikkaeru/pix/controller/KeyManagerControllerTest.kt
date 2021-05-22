@@ -3,15 +3,13 @@ package com.mikkaeru.pix.controller
 import com.mikkaeru.*
 import com.mikkaeru.pix.dto.KeyRequest
 import com.mikkaeru.pix.dto.RemovePixKeyResponse
+import com.mikkaeru.pix.helper.IntegrationHelper
 import com.mikkaeru.pix.model.AccountType
 import com.mikkaeru.pix.model.KeyType
-import com.mikkaeru.pix.shared.GrpcClientFactory
 import com.mikkaeru.pix.shared.JsonError
 import io.grpc.Metadata
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
-import io.micronaut.context.annotation.Factory
-import io.micronaut.context.annotation.Replaces
 import io.micronaut.http.HttpHeaders.LOCATION
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpRequest.POST
@@ -19,7 +17,6 @@ import io.micronaut.http.HttpStatus.*
 import io.micronaut.http.client.HttpClient
 import io.micronaut.http.client.annotation.Client
 import io.micronaut.http.client.exceptions.HttpClientResponseException
-import io.micronaut.test.extensions.junit5.annotation.MicronautTest
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.core.IsEqual.equalTo
 import org.hamcrest.core.StringContains.containsStringIgnoringCase
@@ -27,13 +24,10 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.BDDMockito.given
-import org.mockito.Mockito.mock
 import java.util.*
 import javax.inject.Inject
-import javax.inject.Singleton
 
-@MicronautTest
-internal class KeyManagerControllerTest {
+internal class KeyManagerControllerTest: IntegrationHelper() {
 
     @field:Inject
     lateinit var keymanagerGrpc: KeymanagerServiceGrpc.KeymanagerServiceBlockingStub
@@ -361,16 +355,6 @@ internal class KeyManagerControllerTest {
                 assertThat(code, equalTo(NOT_FOUND.code))
                 assertThat(message, equalTo("Pix key not found"))
             }
-        }
-    }
-
-    @Factory
-    @Replaces(factory = GrpcClientFactory::class)
-    internal class StubFactory {
-
-        @Singleton
-        fun stubMock(): KeymanagerServiceGrpc.KeymanagerServiceBlockingStub {
-            return mock(KeymanagerServiceGrpc.KeymanagerServiceBlockingStub::class.java)
         }
     }
 }
