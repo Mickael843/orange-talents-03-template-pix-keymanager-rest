@@ -23,9 +23,9 @@ class KeyManagerController(
 
     @Post
     fun register(@PathVariable clientId: UUID, @Body @Valid request: KeyRequest): HttpResponse<*> {
-        log.info("[$clientId] criando uma chave pix com $request")
-
-        val response = keymanagerGrpc.registerPixKey(request.toGrpcModel(clientId.toString()))
+        val response = keymanagerGrpc.registerPixKey(request.toGrpcModel(clientId.toString())).also {
+            log.info("[$clientId] criando uma chave pix com $request")
+        }
 
         return HttpResponse.created(response.toKeyResponse(), HttpResponse.uri("/v1/users/$clientId/keys/${response.pixId}"))
     }
